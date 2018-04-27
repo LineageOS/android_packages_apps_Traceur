@@ -16,15 +16,9 @@
 
 package com.android.traceur;
 
-import android.app.ActivityThread;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.SystemProperties;
-import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -36,9 +30,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Locale;
-import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -48,11 +40,11 @@ public class AtraceUtils {
 
     static final String TAG = "Traceur";
 
-    static final String TRACE_DIRECTORY = "/data/local/traces/";
+    public static final String TRACE_DIRECTORY = "/data/local/traces/";
 
     private static final Runtime RUNTIME = Runtime.getRuntime();
 
-    public static void atraceStart(String tags, int bufferSizeKb, boolean apps) {
+    public static boolean atraceStart(String tags, int bufferSizeKb, boolean apps) {
         String appParameter = apps ? "-a '*' " : "";
         String cmd = "atrace --async_start -c -b " + bufferSizeKb + " " + appParameter + tags;
 
@@ -61,13 +53,29 @@ public class AtraceUtils {
             Process atrace = exec(cmd);
             if (atrace.waitFor() != 0) {
                 Log.e(TAG, "atraceStart failed with: " + atrace.exitValue());
+                return false;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return true;
+    }
+
+    public static void atraceStop() {
+        String cmd = "atrace --async_stop > /dev/null";
+
+        Log.v(TAG, "Stopping async atrace: " + cmd);
+        try {
+            Process atrace = exec(cmd);
+
+            if (atrace.waitFor() != 0) {
+                Log.e(TAG, "atraceStop failed with: " + atrace.exitValue());
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
-
-    public static void atraceDump(File outFile) {
+    public static boolean atraceDump(File outFile) {
         String cmd = "atrace --async_stop -z -c -o " + outFile;
 
         Log.v(TAG, "Dumping async atrace: " + cmd);
@@ -76,6 +84,7 @@ public class AtraceUtils {
 
             if (atrace.waitFor() != 0) {
                 Log.e(TAG, "atraceDump failed with: " + atrace.exitValue());
+                return false;
             }
 
             Process ps = exec("ps -AT");
@@ -84,7 +93,8 @@ public class AtraceUtils {
                     ps.getInputStream(), new FileOutputStream(outFile, true /* append */));
 
             if (ps.waitFor() != 0) {
-                Log.v(TAG, "atraceDump:ps failed with: " + ps.exitValue());
+                Log.e(TAG, "atraceDump:ps failed with: " + ps.exitValue());
+                return false;
             }
 
             // Set the new file world readable to allow it to be adb pulled.
@@ -92,6 +102,7 @@ public class AtraceUtils {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        return true;
     }
 
     public static TreeMap<String,String> atraceListCategories() {
@@ -148,31 +159,14 @@ public class AtraceUtils {
         return !"0".equals(SystemProperties.get("debug.atrace.tags.enableflags", "0"));
     }
 
-    public static void atraceDumpAndSend(final Context context) {
-        new AsyncTask<Void, Void, Void>() {
-            private File mFile;
+    public static String getOutputFilename() {
+        String format = "yyyy-MM-dd-HH-mm-ss";
+        String now = new SimpleDateFormat(format, Locale.US).format(new Date());
+        return String.format("trace-%s-%s-%s.ctrace", Build.BOARD, Build.ID, now);
+    }
 
-            @Override
-            protected void onPreExecute() {
-                String format = "yyyy-MM-dd-HH-mm-ss";
-                String now = new SimpleDateFormat(format, Locale.US).format(new Date());
-                mFile = new File(TRACE_DIRECTORY,
-                    String.format("trace-%s-%s-%s.ctrace", Build.BOARD, Build.ID, now));
-
-                FileSender.postCaptureNotification(context, mFile);
-            }
-
-            @Override
-            protected Void doInBackground(Void... params) {
-                atraceDump(mFile);
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void result) {
-                FileSender.postNotification(context, mFile);
-            }
-        }.execute();
+    public static File getOutputFile(String filename) {
+        return new File(AtraceUtils.TRACE_DIRECTORY, filename);
     }
 
     /**

@@ -21,7 +21,6 @@ import static org.junit.Assert.assertNotNull;
 import android.content.Context;
 import android.content.Intent;
 import android.os.RemoteException;
-import android.support.test.filters.MediumTest;
 import android.support.test.uiautomator.By;
 import android.support.test.uiautomator.UiDevice;
 import android.support.test.uiautomator.UiObject2;
@@ -48,10 +47,21 @@ public class TraceurAppTests {
         mDevice = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
 
         try {
+            if (!mDevice.isScreenOn()) {
+                mDevice.wakeUp();
+            }
+
+            // Press Menu to skip the lock screen.
+            // In case we weren't on the lock screen, press Home to return to a clean launcher.
+            mDevice.pressMenu();
+            mDevice.pressHome();
+
             mDevice.setOrientationNatural();
         } catch (RemoteException e) {
             throw new RuntimeException("Failed to freeze device orientation.", e);
         }
+
+        mDevice.waitForIdle();
 
         Context context = InstrumentationRegistry.getContext();
         Intent intent = context.getPackageManager().getLaunchIntentForPackage(TRACEUR_PACKAGE);
@@ -64,6 +74,7 @@ public class TraceurAppTests {
 
     @After
     public void tearDown() throws Exception {
+        mDevice.unfreezeRotation();
         // Finish Traceur activity.
         mDevice.pressBack();
         mDevice.pressHome();
@@ -71,7 +82,6 @@ public class TraceurAppTests {
 
     @Presubmit
     @Test
-    @MediumTest
     public void testElementsOnMainScreen() throws Exception {
         assertNotNull("Record trace switch not found.",
                 mDevice.wait(Until.findObject(By.text("Record trace")),
@@ -101,13 +111,18 @@ public class TraceurAppTests {
      * Take a trace by toggling 'Record trace' and then tap 'Save and share trace'.
      * Tap the notification once the trace is saved, and verify the share dialog appears.
      */
+    @Presubmit
     @Test
-    @MediumTest
     public void testSuccessfulTracing() throws Exception {
         mDevice.wait(Until.findObject(By.text("Record trace")), TIMEOUT);
 
         mDevice.findObject(By.text("Record trace")).click();
         mDevice.findObject(By.text("Record trace")).click();
+
+        // Wait for the popover notification to appear and then disappear,
+        // so we can reliably click the notification in the notification shade.
+        mDevice.wait(Until.hasObject(By.text("Tap to share your trace")), TIMEOUT);
+        mDevice.wait(Until.gone(By.text("Tap to share your trace")), TIMEOUT);
 
         mDevice.openNotification();
         mDevice.wait(Until.hasObject(By.text("Tap to share your trace")), TIMEOUT);

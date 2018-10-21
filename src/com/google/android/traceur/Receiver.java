@@ -52,14 +52,14 @@ public class Receiver extends BroadcastReceiver {
 
     public static final String NOTIFICATION_CHANNEL = "system-tracing";
 
-    private static final List<String> ATRACE_TAGS = Arrays.asList(
+    private static final List<String> TRACE_TAGS = Arrays.asList(
             "am", "binder_driver", "camera", "dalvik", "freq", "gfx", "hal",
             "idle", "input", "irq", "res", "sched", "sync", "view", "wm",
             "workq");
 
     /* The user list doesn't include workq, irq, or sync, because the user builds don't have
      * permissions for them. */
-    private static final List<String> ATRACE_TAGS_USER = Arrays.asList(
+    private static final List<String> TRACE_TAGS_USER = Arrays.asList(
             "am", "binder_driver", "camera", "dalvik", "freq", "gfx", "hal",
             "idle", "input", "res", "sched", "view", "wm");
 
@@ -95,7 +95,7 @@ public class Receiver extends BroadcastReceiver {
         boolean prefsTracingOn =
                 prefs.getBoolean(context.getString(R.string.pref_key_tracing_on), false);
 
-        if (prefsTracingOn != AtraceUtils.isTracingOn()) {
+        if (prefsTracingOn != TraceUtils.isTracingOn()) {
             if (prefsTracingOn) {
                 // Show notification if the tags in preferences are not all actually available.
                 String activeAvailableTags = getActiveTags(context, prefs, true);
@@ -110,9 +110,9 @@ public class Receiver extends BroadcastReceiver {
 
                 boolean appTracing = prefs.getBoolean(context.getString(R.string.pref_key_apps), true);
 
-                AtraceService.startTracing(context, activeAvailableTags, bufferSize, appTracing);
+                TraceService.startTracing(context, activeAvailableTags, bufferSize, appTracing);
             } else {
-                AtraceService.stopTracing(context);
+                TraceService.stopTracing(context);
             }
         }
 
@@ -245,7 +245,7 @@ public class Receiver extends BroadcastReceiver {
                 getDefaultTagList());
         StringBuilder sb = new StringBuilder(10 * tags.size());
         TreeMap<String, String> available =
-                onlyAvailable ? AtraceUtils.atraceListCategories() : null;
+                onlyAvailable ? TraceUtils.listCategories() : null;
 
         for (String s : tags) {
             if (onlyAvailable && !available.containsKey(s)) continue;
@@ -263,7 +263,7 @@ public class Receiver extends BroadcastReceiver {
         Set<String> tags = prefs.getStringSet(context.getString(R.string.pref_key_tags),
                 getDefaultTagList());
         StringBuilder sb = new StringBuilder(10 * tags.size());
-        TreeMap<String, String> available = AtraceUtils.atraceListCategories();
+        TreeMap<String, String> available = TraceUtils.listCategories();
 
         for (String s : tags) {
             if (available.containsKey(s)) continue;
@@ -280,7 +280,7 @@ public class Receiver extends BroadcastReceiver {
     public static Set<String> getDefaultTagList() {
         if (mDefaultTagList == null) {
             mDefaultTagList = new ArraySet<String>(Build.TYPE.equals("user")
-                ? ATRACE_TAGS_USER : ATRACE_TAGS);
+                ? TRACE_TAGS_USER : TRACE_TAGS);
         }
 
         return mDefaultTagList;

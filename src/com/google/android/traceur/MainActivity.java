@@ -16,12 +16,28 @@ package com.android.traceur;
  */
 
 import android.app.Activity;
+import android.provider.Settings;
 import android.os.Bundle;
+import android.os.UserManager;
 
 public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        boolean developerOptionsIsEnabled =
+            Settings.Global.getInt(getContentResolver(),
+                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0;
+        boolean isAdminUser = getApplicationContext()
+                .getSystemService(UserManager.class).isAdminUser();
+
+        if (!developerOptionsIsEnabled || !isAdminUser) {
+            finish();
+        }
     }
 }

@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "85f15572_1e59af76",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 20587
+      },
+      "writtenOn": "2023-12-26T15:50:34Z",
+      "side": 1,
+      "message": "@Markus: You ran into the same issue with the pre-commit hook as I just did/noticed which ends up creating an additional Change-Id trailer.\nYou can avoid that by making one of the existing ones known to git with e.g. `git config --global trailer.changeid.key \"Change-Id\"`",
+      "revId": "0cebb271467ab3d41bf094a6cb1bf08e53bddaed",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
